@@ -2,7 +2,7 @@
 % Please edit documentation in R/family.run.R
 \name{runSPTCRdeep}
 \alias{runSPTCRdeep}
-\title{runSPTCRdeep}
+\title{runSPTCRdeep -Deprecated -}
 \usage{
 runSPTCRdeep(
   object,
@@ -18,6 +18,7 @@ runSPTCRdeep(
   VAE = F,
   num_sampled = 1,
   epochs = 40,
+  LSTMBatch = 1000,
   temp.save = T,
   temp.folder = getwd()
 )

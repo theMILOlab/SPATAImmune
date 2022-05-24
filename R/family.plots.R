@@ -162,7 +162,8 @@ plotVDJCirclize <- function(object,
     bc.join <- joinWithFeatures(object, features = arrange.by) %>% select(barcodes, {{arrange.by}})
     data <- 
       data %>% 
-      dplyr::left_join(.,bc.join, by="barcodes")
+      dplyr::left_join(.,bc.join, by="barcodes") %>% 
+      as.data.frame()
     
     purrr::map(.x=unique(data[,arrange.by]),
                .f=function(select){
@@ -350,7 +351,8 @@ plotVDJArrangments<- function(object,
     bc.join <- joinWithFeatures(object, features = arrange.by) %>% select(barcodes, {{arrange.by}})
     data <- 
       data %>% 
-      dplyr::left_join(.,bc.join, by="barcodes")
+      dplyr::left_join(.,bc.join, by="barcodes") %>% 
+      as.data.frame()
     
     plot.out <- purrr::map(.x=unique(data[,arrange.by]),
                .f=function(select){

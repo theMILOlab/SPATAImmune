@@ -70,7 +70,7 @@ modelAA2vec <- function(){
 
 
 
-#' @title runSPTCRdeep
+#' @title runSPTCRdeep -Deprecated - 
 #' @author Dieter Henrik Heiland
 #' @description This function import the VDJ data from the SPTCR-Pipline or IgBlast
 #' @return SPATA object
@@ -89,10 +89,15 @@ runSPTCRdeep <- function(object,
                          VAE=F,
                          num_sampled = 1,
                          epochs=40, 
+                         LSTMBatch=1000,
                          temp.save=T,
                          temp.folder=getwd()){
   
-  SPATAImmune::verbose.text("Prepare data")
+  
+  
+  
+  
+  SPATAImmune::verbose.text("The function is Deprecated .... Prepare data")
   if(is.null(constant)){data <- SPATAImmune::GetVDJ(object)}else{data <- SPATAImmune::GetVDJ(object) %>% dplyr::filter(c==constant)}
 
   
@@ -276,7 +281,7 @@ runSPTCRdeep <- function(object,
       
       model.LSTM.encoder  %>% keras::compile(loss = 'mse', optimizer = 'adam')
       SPATAImmune::verbose.text("Training LSTM AE ... ")
-      model.LSTM.encoder %>% keras::fit(array, array, epochs=epochs.LSTM)
+      model.LSTM.encoder %>% keras::fit(array, array, epochs=epochs.LSTM, batch_size=LSTMBatch)
       
       
       #get latent space
@@ -607,5 +612,85 @@ runClonalityAnalysis <- function(object, motif.length=8, constant="TRB"){
   
   
 }
+
+
+
+#' @title runSpaceXR
+#' @author Dieter Henrik Heiland
+#' @param object SPATA object.
+#' @param cluster Meta data parameter.
+#' @param Seurat Seurat data (scRNA-seq).
+#' @description Single Cell integration
+#' @return SPATA object with integrated clusters (from Seurat)
+#' @examples 
+#' @export
+#'
+#'
+runSpaceXR <- function(Seurat,cluster, SPATA){
+  
+  
+  library(spacexr)
+  library(Matrix)
+  
+  counts <- Seurat@assays$RNA@counts %>% as.matrix()
+  counts[1:10, 1:10]
+  meta_data <-  Seurat@meta.data %>% as.data.frame() %>% dplyr::select({{cluster}},nFeature_RNA) # load in meta_data (barcodes, clusters, and nUMI)
+  
+  cell_types <- meta_data[,cluster]; names(cell_types) <- rownames(meta_data) # create cell_types named list
+  
+  cell_types <- as.factor(cell_types) # convert to factor data type
+  nUMI <- colSums(counts)
+  
+  ### Create the Reference object
+  reference <- Reference(counts, cell_types, nUMI)
+  
+  
+  
+  counts <- SPATA2::getCountMatrix(SPATA) %>% as.matrix()
+  coords <- SPATA2::getCoordsDf(SPATA) %>% dplyr::select(barcodes, x, y) %>% as.data.frame()
+  rownames(coords) <- coords$barcodes
+  coords <- coords[,c(2:3)]
+  names(coords) <- c("xcoord","ycoord")
+  
+  nUMI <- colSums(counts) 
+  puck <- SpatialRNA(coords, counts, nUMI)
+  
+  
+  myRCTD <- create.RCTD(puck, reference, max_cores = 5)
+  myRCTD <- run.RCTD(myRCTD, doublet_mode = 'doublet')
+  results <- myRCTD@results
+  
+  norm_weights = normalize_weights(results$weights) 
+  cell_type_names <- myRCTD@cell_type_info$info[[2]] #list of cell type names
+  spatialRNA <- myRCTD@spatialRNA
+  
+  norm_weights <- 
+    norm_weights %>% 
+    as.data.frame() %>% 
+    rownames_to_column("barcodes") %>% 
+    left_join(SPATA %>% getCoordsDf() %>% dplyr::select(barcodes),., by="barcodes")
+  
+  norm_weights[is.na(norm_weights)] <- 0
+  
+  SPATA <- SPATA %>% SPATA2::addFeatures(.,norm_weights, overwrite = T)
+  
+  return(SPATA)
+  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
