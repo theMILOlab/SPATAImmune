@@ -8,7 +8,7 @@ plotVDJCirclize(
   object,
   select.c = "TRB",
   arrange.by = NULL,
-  top = 20,
+  top = 200,
   output = getwd()
 )
 }

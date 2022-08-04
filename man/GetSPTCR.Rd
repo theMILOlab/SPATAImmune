@@ -4,7 +4,7 @@
 \alias{GetSPTCR}
 \title{GetSPTCR}
 \usage{
-GetSPTCR(object, constant = NULL)
+GetSPTCR(object)
 }
 \value{
 SPATA object
