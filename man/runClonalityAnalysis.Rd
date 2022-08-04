@@ -2,7 +2,7 @@
 % Please edit documentation in R/family.run.R
 \name{runClonalityAnalysis}
 \alias{runClonalityAnalysis}
-\title{runClonalityAnalysis}
+\title{runClonalityAnalysis -Deprecated -}
 \usage{
 runClonalityAnalysis(object, motif.length = 8, constant = "TRB")
 }

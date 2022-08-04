@@ -19,6 +19,21 @@ GetVDJ <- function(object, constant=NULL){
   
 }
 
+#' @title GetSPTCR
+#' @author Dieter Henrik Heiland
+#' @description This function import the VDJ data from the SPTCR-Pipline 
+#' @return SPATA object
+#' @examples 
+#' @export
+
+GetSPTCR <- function(object){
+  sample <- object@samples
+    if(any(c(object@data[[sample]] %>% names())=="VDJ")){
+      return(object@data[[sample]]$VDJ$SPTCR)}else{SPATAImmune::verbose.text("Data are not stored in object")}
+}
+
+
+
 #' @title GetVDJ
 #' @author Dieter Henrik Heiland
 #' @description This function import the VDJ data from the SPTCR-Pipline or IgBlast
@@ -27,17 +42,25 @@ GetVDJ <- function(object, constant=NULL){
 #' @export
 GetColors <-  function(n) {hues = seq(15, 375, length = n + 1);hcl(h = hues, l = 65, c = 100)[1:n]}
 
+
+
+
+
 #' @title GetClonalityAnalysis
 #' @author Dieter Henrik Heiland
 #' @description This function import the VDJ data from the SPTCR-Pipline or IgBlast
 #' @return SPATA object
 #' @examples 
 #' @export
-GetClonalityAnalysis <- function(object, constant="TRB"){
+GetClonalityAnalysis <- function(object, 
+                                 constant="TRB"){
   sample <- object@samples
   return(object@data[[sample]]$VDJ$ClusterValidation[[constant]] )
   
 }
+
+
+
 
 
 #' @title getSpatialRegression
@@ -51,7 +74,11 @@ GetClonalityAnalysis <- function(object, constant="TRB"){
 #' @return Correlation matrix of NxN input
 #' @export
 #' 
-getSpatialRegression <- function(object, features, model, smooth=F, normalize=F){
+getSpatialRegression <- function(object, 
+                                 features, 
+                                 model, 
+                                 smooth=F, 
+                                 normalize=F){
   
   #1. transform data into sp format
   color_var <- SPATA2::hlpr_join_with_aes(object, df= SPATA2::getCoordsDf(object), color_by = features, normalize=normalize, smooth=smooth)
@@ -67,12 +94,12 @@ getSpatialRegression <- function(object, features, model, smooth=F, normalize=F)
   nb.list <- spdep::nb2listw(nc.nb)
   nb.mat <- spdep::nb2mat(nc.nb)
   runCCADist <- function(object,color_var, a,b){
-    #color_var <- SPATA2::hlpr_join_with_aes(object, df= SPATA2::getCoordsDf(object), color_by = c(a,b), normalize=normalize, smooth=smooth)
+    sample <- SPATA2::getSampleNames(object)
     data <- color_var[,c(a,b)] %>% as.data.frame()
     names(data) <- c("a", "b")
     rownames(data) <- color_var$barcodes
     
-    coord_spots <- object@spatial$`275_T`$Space@colData[, c("row", "col")] %>% as.data.frame()
+    coord_spots <- object@spatial[[sample]]$Space@colData[, c("row", "col")] %>% as.data.frame()
     
     coord_spots <- cbind(coord_spots, data[rownames(coord_spots), ])
     coord_spots2 <- coord_spots
@@ -93,7 +120,7 @@ getSpatialRegression <- function(object, features, model, smooth=F, normalize=F)
     Y <- getKernel(coord_spots, "b")
     cca <- CCA::matcor(X, Y)
     
-    return(c(cca$XYcor %>% mean(), mean(na.omit(as.vector(real)))))
+    return(c(cca$XYcor[!is.na(cca$XYcor)] %>% mean(), mean(na.omit(as.vector(real)))))
     
     
   }
@@ -201,4 +228,11 @@ getSpatialRegression <- function(object, features, model, smooth=F, normalize=F)
   
   
 }
+
+
+
+
+
+
+
 

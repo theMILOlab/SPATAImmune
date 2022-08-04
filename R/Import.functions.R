@@ -43,7 +43,7 @@ addReArrangmentMatrix <- function(object,
 
 
 
-#' @title ImportVDJ
+#' @title ImportVDJ -Deprecated - 
 #' @author Dieter Henrik Heiland
 #' @description This function import the VDJ data from the SPTCR-Pipline or IgBlast
 #' @param object The data frame with barcodes and the ReArrangment parameters
@@ -156,6 +156,86 @@ ImportVDJ <- function(object,
   
   
 }
+
+
+
+#' @title ImportSPTCRseq
+#' @author Dieter Henrik Heiland
+#' @description This function import the VDJ data from the SPTCR-Pipline or IgBlast
+#' @param object The data frame with barcodes and the ReArrangment parameters
+#' @param path The path to the SPTCR-seq pipeline output
+
+
+#' @return SPATA object
+#' @examples 
+#' 
+#' @export
+
+
+ImportSPTCRseq <- function(object,
+                           sample_name,
+                           path){
+  
+  SPATA2::check_object(object)
+  
+  SPATAImmune::verbose.text("Load SPTCR seq Pipeline data")
+  vdj <- read.csv(paste0(path,"/ClusterCorrect/",sample_name,"_CORRECTED_umi_corrected_count_table.csv"))
+  vdj <- vdj %>% mutate(barcodes=paste0(vdj$Spatial.Barcode, "-1"))
+  
+  
+  SPATAImmune::verbose.text("Check Barcodes")
+  
+  bc <- object %>% SPATA2:::getBarcodes()
+  barcode.stat <- table(vdj$barcodes %in% bc) %>% as.data.frame()
+  message <- paste0(round(c(barcode.stat$Freq[2]/barcode.stat$Freq[1]*100),digits = 2) , " % of the barcodes found in the stRNA-seq object")
+  SPATAImmune::verbose.text(message)
+  
+  vdj_filtered <- 
+    vdj %>% 
+    dplyr::filter(barcodes %in% bc) %>% 
+    dplyr::select(barcodes, Locus,V,D,J,CDR3_aa, UMI.Corrected)
+  
+  
+  #vdj_filtered %>% group_by(barcodes) %>% summarise(sum=length(barcodes)) %>% arrange(desc(sum))
+  #vdj_filtered %>% group_by(CDR3_aa) %>% summarise(sum=length(CDR3_aa)) %>% arrange(desc(sum))
+  
+  names(vdj_filtered) <- c("barcodes", "c", "v", "d", "j", "CDR3_aa", "Count")
+  
+  SPATAImmune::verbose.text("Add data to object")
+  sample <- object@samples
+  object@data[[sample]]$VDJ <- list()
+  object@data[[sample]]$VDJ$SPTCR <- vdj_filtered
+  
+  return(object)
+  
+  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

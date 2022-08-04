@@ -1,4 +1,4 @@
-#' @title runKmers
+#' @title runKmers -Deprecated - 
 #' @author Dieter Henrik Heiland
 #' @description This function import the VDJ data from the SPTCR-Pipline or IgBlast
 #' @return SPATA object
@@ -27,7 +27,7 @@ runKmers <- function(seq, kmer.length=4, kmer.nr=NULL, overlap=1){
   
 }
 
-#' @title modelAA2vec
+#' @title modelAA2vec -Deprecated - 
 #' @author Dieter Henrik Heiland
 #' @description This function import the VDJ data from the SPTCR-Pipline or IgBlast
 #' @return SPATA object
@@ -477,7 +477,7 @@ runSPTCRdeep <- function(object,
 
 
 
-#' @title runClonalityAnalysis
+#' @title runClonalityAnalysis -Deprecated - 
 #' @author Dieter Henrik Heiland
 #' @description This function import the VDJ data from the SPTCR-Pipline or IgBlast
 #' @return SPATA object
@@ -677,8 +677,6 @@ runSpaceXR <- function(Seurat,cluster, SPATA){
   return(SPATA)
   
 }
-
-
 
 
 

@@ -141,6 +141,8 @@ plotQualityIgBlast <- function(vdj){
   
 }
 
+
+
 #' @title plotVDJCirclize
 #' @author Dieter Henrik Heiland
 #' @description SPATA-Immuno
@@ -152,10 +154,12 @@ plotQualityIgBlast <- function(vdj){
 plotVDJCirclize <- function(object, 
                             select.c="TRB", 
                             arrange.by=NULL, 
-                            top=20, 
+                            top=200, 
                             output=getwd()){
   
   data <- SPATAImmune::GetVDJ(object)
+  if(is.null(data)){data <- SPATAImmune::GetSPTCR(object)}
+  if(is.null(data)) stop ("No VDJ or SPTCR slot in object")
   
   # If required select spots
   if(!is.null(arrange.by)){
@@ -217,19 +221,23 @@ plotVDJCirclize <- function(object,
                    
                  }
                  
+                 
+                 
                  #save plot
                  setwd(output)
                  pdf(paste0("VDJ_Plot_",arrange.by,"_",select,".pdf"), useDingbats=F)
                  
-                 mat <- data[,c("v", "j")]
-                 names(mat) <- c("from", "to")
-                 mat <- reshape2::acast(from~to, data=mat)
+                 order_v <- data %>% group_by(v) %>% summarise(sum=length(v)) %>% arrange(desc(sum)) %>% ungroup() %>% pull(v)
+                 order_j <- data %>% group_by(j) %>% summarise(sum=length(j)) %>% arrange(desc(sum)) %>% ungroup() %>% pull(j)
                  
-                 require(circlize)
+                 mat <- data[,c("v", "j")]
+                 mat <- reshape2::acast(v~j, data=mat)
+                 mat <- mat[order_v, order_j]
+                 library(circlize)
                  grid.colors <- 
                    data.frame(names = c(rownames(mat), colnames(mat)),
-                              colors= c(colorRampPalette(RColorBrewer::brewer.pal(9, "Reds"))(nrow(mat)), 
-                                        colorRampPalette(RColorBrewer::brewer.pal(9, "Greens"))(ncol(mat)))
+                              colors= c(colorRampPalette(rev(RColorBrewer::brewer.pal(9, "Reds")))(nrow(mat)), 
+                                        colorRampPalette(rev(RColorBrewer::brewer.pal(9, "Greens")))(ncol(mat)))
                    )
                  rownames(grid.colors)=grid.colors$names
                  grid.colors$names=NULL
@@ -330,6 +338,8 @@ plotVDJCirclize <- function(object,
 }
 
 
+
+
 #' @title plotVDJArrangments
 #' @author Dieter Henrik Heiland
 #' @description SPATA-Immuno
@@ -345,6 +355,11 @@ plotVDJArrangments<- function(object,
                               output=getwd()){
   
   data <- SPATAImmune::GetVDJ(object)
+  if(is.null(data)){data <- SPATAImmune::GetSPTCR(object)}
+  if(is.null(data)) stop ("No VDJ or SPTCR slot in object")
+  
+  
+  
   
   # If required select spots
   if(!is.null(arrange.by)){
@@ -409,8 +424,8 @@ plotVDJArrangments<- function(object,
                  plot.out <- SPATAImmune::plotDonut(table(data$reAr))
                  return(plot.out)
                })
-    
-  }
+
+    }
   
   if(is.null(arrange.by)){
     # Filter vdj by top and constant region
@@ -535,6 +550,8 @@ plotAAlogo <- function(object, motif.length=8, cluster.select=2, constant="TRB")
   return(p)
 }
 
+
+
 #' @title plotBarCompare
 #' @author Dieter Henrik Heiland
 #' @description SPATA-Immuno
@@ -568,6 +585,8 @@ plotBarCompare <- function (plot_df, Feat, compare_to, order=NULL) {
  
   return(p)
 }
+
+
 
 #' @title plotAggregatedDimred
 #' @author Dieter Henrik Heiland

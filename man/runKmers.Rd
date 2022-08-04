@@ -2,7 +2,7 @@
 % Please edit documentation in R/family.run.R
 \name{runKmers}
 \alias{runKmers}
-\title{runKmers}
+\title{runKmers -Deprecated -}
 \usage{
 runKmers(seq, kmer.length = 4, kmer.nr = NULL, overlap = 1)
 }

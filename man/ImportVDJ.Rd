@@ -2,7 +2,7 @@
 % Please edit documentation in R/Import.functions.R
 \name{ImportVDJ}
 \alias{ImportVDJ}
-\title{ImportVDJ}
+\title{ImportVDJ -Deprecated -}
 \usage{
 ImportVDJ(
   object,

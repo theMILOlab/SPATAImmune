@@ -2,7 +2,7 @@
 % Please edit documentation in R/family.run.R
 \name{modelAA2vec}
 \alias{modelAA2vec}
-\title{modelAA2vec}
+\title{modelAA2vec -Deprecated -}
 \usage{
 modelAA2vec()
 }

@@ -2,7 +2,9 @@
 
 export(GetClonalityAnalysis)
 export(GetColors)
+export(GetSPTCR)
 export(GetVDJ)
+export(ImportSPTCRseq)
 export(ImportVDJ)
 export(addReArrangmentMatrix)
 export(check.SPATA)
