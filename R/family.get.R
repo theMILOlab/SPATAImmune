@@ -101,6 +101,7 @@ getSpatialRegression <- function(object,
     
     coord_spots <- object %>% SPATA2::getCoordsDf()
     coord_spots <- coord_spots[, c("row", "col")] %>% as.data.frame()
+    rownames(coord_spots) <- object %>% SPATA2::getCoordsDf() %>% pull(barcodes)
     
     coord_spots <- cbind(coord_spots, data[rownames(coord_spots), ])
     coord_spots2 <- coord_spots
