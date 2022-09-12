@@ -154,6 +154,7 @@ plotQualityIgBlast <- function(vdj){
 plotVDJCirclize <- function(object, 
                             select.c="TRB", 
                             arrange.by=NULL, 
+                            barcodes=NULL,
                             top=200, 
                             output=getwd()){
   
@@ -161,15 +162,16 @@ plotVDJCirclize <- function(object,
   if(is.null(data)){data <- SPATAImmune::GetSPTCR(object)}
   if(is.null(data)) stop ("No VDJ or SPTCR slot in object")
   
+  
   # If required select spots
-  if(!is.null(arrange.by)){
+  if(!is.null(arrange.by) & is.null(barcodes) ){
     bc.join <- joinWithFeatures(object, features = arrange.by) %>% select(barcodes, {{arrange.by}})
     data <- 
       data %>% 
       dplyr::left_join(.,bc.join, by="barcodes") %>% 
       as.data.frame()
     
-    purrr::map(.x=unique(data[,arrange.by]),
+    plots <- purrr::map(.x=unique(data[,arrange.by]),
                .f=function(select){
                  data <- data %>% dplyr::filter(!!sym(arrange.by)=={{select}})
                  
@@ -257,8 +259,12 @@ plotVDJCirclize <- function(object,
     
   }
   
-  if(is.null(arrange.by)){
-    # Filter vdj by top and constant region
+  if(is.null(arrange.by) & !is.null(barcodes)){
+   
+    select_barcodes <- barcodes
+    message("Preselection for barcodes")
+    data <- data %>% filter(barcodes %in% select_barcodes)
+     # Filter vdj by top and constant region
     if(select.c == "TRB" | select.c == "TRD"){
       data <- 
         data %>% 
@@ -333,6 +339,7 @@ plotVDJCirclize <- function(object,
     
     
   }
+  
   
   
 }

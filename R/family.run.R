@@ -69,6 +69,224 @@ modelAA2vec <- function(){
 } 
 
 
+#' @title Cdr3Cluster 
+#' @author Dieter Henrik Heiland
+#' @description This function import the VDJ data from the SPTCR-Pipline or IgBlast
+#' @return SPATA object
+#' @examples 
+#' @export
+
+
+Cdr3Cluster <- function(object,
+                        min.length=8,
+                        min.Count=2,
+                        select.c="TRB",
+                        embedding_size = 128,
+                        skip_window = 5,
+                        epochs.w2v=80,
+                        minPts=5){
+  
+  SPATAImmune::verbose.text("Prepare data")
+  
+  #1. Get the unique CDR3 seq
+  sptcr <- 
+    SPATAImmune::GetSPTCR(object) %>% 
+    dplyr::filter(c==select.c) %>% 
+    dplyr::mutate(length=str_length(CDR3_aa)) %>% 
+    dplyr::filter(length>min.length) %>% 
+    dplyr::select(-length) %>% 
+    dplyr::filter(Count>min.Count)
+  
+  CDR3_seq <- unique(sptcr$CDR3_aa)
+  length(CDR3_seq)
+  
+  # 2. Run kmers
+  kmers <- SPATAImmune::runKmers(CDR3_seq)
+  kmers <- base::iconv(kmers, to = "UTF-8")
+  
+  for(i in 1:length(kmers)){kmers[[i]] <- kmers[[i]] %>% str_replace_all(pattern="[*]",replacement="1")}
+
+  
+  
+  SPATAImmune::verbose.text("Train AA2vector AA Embedding")
+  SPATAImmune::verbose.text("Run Kmers Embedding")
+  
+  # 3. Run AA2vector
+  library(keras)
+  library(tensorflow)
+  
+  SPATAImmune::verbose.text("Run Tokenizer ...")
+  tokenizer <- 
+    keras::text_tokenizer(200000) %>% 
+    keras::fit_text_tokenizer(kmers)
+  
+  tokenizer <- keras::text_tokenizer(tokenizer$word_index %>% length()) %>% fit_text_tokenizer(kmers)
+  
+  skipgrams_generator <- function(kmers, tokenizer, window_size, negative_samples) {
+    
+    library(reticulate)
+    library(purrr)
+    gen <- texts_to_sequences_generator(tokenizer, sample(kmers))
+    function() {
+      skip <- generator_next(gen) %>%
+        skipgrams(
+          vocabulary_size = tokenizer$num_words, 
+          window_size = window_size, 
+          negative_samples = 1
+        )
+      x <- transpose(skip$couples) %>% purrr::map(. %>% unlist %>% as.matrix(ncol = 1))
+      y <- skip$labels %>% as.matrix(ncol = 1)
+      list(x, y)
+    }
+  }
+  
+  
+  SPATAImmune::verbose.text("Load Model  ...")
+  
+  library(keras)
+  
+  input_target <- keras::layer_input(shape = 1)
+  input_context <- keras::layer_input(shape = 1)
+  
+  embedding <- keras::layer_embedding(
+    input_dim = tokenizer$num_words+1, 
+    output_dim = embedding_size, 
+    input_length = 1, 
+    name = "embedding")
+  
+  target_vector <- 
+    input_target %>% 
+    embedding() %>% 
+    keras::layer_flatten(name = "Test")
+  
+  
+  context_vector <- 
+    input_context %>%
+    embedding() %>%
+    keras::layer_flatten()
+  
+  
+  dot_product <- keras::layer_dot(list(target_vector, context_vector), axes = 1)
+  output <- keras::layer_dense(dot_product, units = 1, activation = "sigmoid")
+  
+  model <- keras::keras_model(list(input_target, input_context), output)
+  model %>% keras::compile(loss = "binary_crossentropy", optimizer = "adam")
+  
+  SPATAImmune::verbose.text("Fit Generator  ...")
+  model %>% 
+    keras::fit(
+      skipgrams_generator(kmers, tokenizer, skip_window, negative_samples=1), 
+      steps_per_epoch = 10, 
+      epochs = 10,
+      verbose = T)
+  
+  SPATAImmune::verbose.text("Get Data from AA2verctor...")
+  
+  embedding_matrix <- get_weights(model)[[1]]
+  words <- 
+    data_frame(word = names(tokenizer$word_index), id = as.integer(unlist(tokenizer$word_index))) %>% 
+    dplyr::filter(id <= tokenizer$num_words) %>% 
+    dplyr::arrange(id)
+  
+  row.names(embedding_matrix) <- c("UNK", words$word)
+  
+  
+   sim <- map_dfr(.x=1:length(kmers), 
+         .f=function(i){
+           print(i)
+           aa <- c(kmers[[i]] %>% str_split(" ") %>% unlist())
+           if(length(aa)>1){
+             embedding_matrix[toupper(row.names(embedding_matrix)) %in% aa, ] %>% colMeans() %>% t() %>% as.data.frame() 
+             }else{
+           embedding_matrix[toupper(row.names(embedding_matrix)) %in% aa, ] %>% t() %>% as.data.frame()
+             }
+         })
+           
+  
+  c <- kmeans(sim, centers = 50)
+  
+  umap <- uwot::umap(sim, metric = "cosine", a=0.4, b=0.5)
+  d <- dbscan::hdbscan(umap, minPts=minPts)
+  
+  umap <-  umap %>% as.data.frame()
+  names(umap) <- c("x", "y")
+  
+  cols <- colorRampPalette((RColorBrewer::brewer.pal(12,"Set3")))(max(d$cluster)+1)
+  ggplot(umap, aes(x,y, color=as.character(d$cluster), size=d$membership_prob))+geom_point()+theme_classic()+scale_color_manual(values = cols)
+  
+  
+  sptcr <- 
+    sptcr %>% 
+    left_join(.,
+    data.frame(CDR3_aa=CDR3_seq,
+             cluster = d$cluster,
+             cluster_membership_prob = d$membership_prob),
+    by="CDR3_aa") %>%
+    left_join(., getCoordsDf(object), by="barcodes")
+
+  col <- colorRampPalette((RColorBrewer::brewer.pal(9,"Greens")))
+  
+  SPATA2::plotSurface(object, pt_alpha = 0)+
+    geom_point(data=sptcr %>% filter(cluster==70),
+               mapping = aes(x,y,size=cluster_membership_prob))
+
+  SPATA2::plotSurface(object, pt_alpha = 0)+
+    geom_point(data=sptcr, mapping=aes(x,y, color=as.character(cluster), size=cluster_membership_prob))+
+    scale_color_manual(values = cols)
+  
+  
+  #table(sptcr$cluster) %>% as.data.frame() %>% arrange(desc(Freq))
+  
+  
+  sptcr <- 
+    sptcr %>% 
+    left_join(.,
+              getFeatureDf(object) %>% dplyr::select(barcodes, BayesSpace),
+              by="barcodes")
+  
+  
+  stat <- sptcr %>% group_by(cluster, BayesSpace) %>% count() %>% pivot_wider(names_from = "BayesSpace", values_from = "n") %>% as.data.frame()
+  stat[is.na(stat)] <- 0
+  rownames(stat) <- paste0("cluster", stat$cluster)
+  stat <- stat[, 2:10]
+  stat[stat>7]=stat[stat>7]/10
+  
+  for(i in 1:ncol(stat)){stat[,i] <- scales::rescale(stat[,i], c(0,1))}
+  stat[,] %>% as.matrix() %>% t() %>%  corrplot::corrplot(is.corr = F)
+  
+  stat[,] %>% as.matrix() %>% t() %>%  pheatmap::pheatmap()
+  
+  
+  
+  colnames(stat)
+  nr.sample=10
+  df <- stat %>% as.data.frame()
+  
+  gl.ls <- purrr::map_dfr(.x = 1:9, .f = function(i) {
+      out <- df %>%   arrange(desc(!!sym(as.character(i)))) %>% head(30)
+      out[,(i!=1:9)]=out[,(i!=1:9)]/2
+      out <- out %>% as.data.frame()
+    
+  })
+
+  col = colorRampPalette((RColorBrewer::brewer.pal(9, "Greys")))(50)
+  #col = colorRampPalette((RColorBrewer::brewer.pal(9, "Greens")))(50)
+  pheatmap::pheatmap(gl.ls %>% t(), cluster_rows = F, cluster_cols = F, 
+                         show_colnames = F, silent = F,color = col)
+  
+  mat <- gl.ls %>% t()
+  rownames(mat) <- NULL
+  colnames(mat) <- NULL
+  mat %>%  corrplot::corrplot(is.corr = F, col = col)
+  
+  SPATA2::plotSurface(object, color_by = "BayesSpace", pt_alpha = 0.5)
+  
+}
+
+
+
+
+
 
 #' @title runSPTCRdeep -Deprecated - 
 #' @author Dieter Henrik Heiland

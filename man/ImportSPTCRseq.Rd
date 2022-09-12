@@ -4,7 +4,7 @@
 \alias{ImportSPTCRseq}
 \title{ImportSPTCRseq}
 \usage{
-ImportSPTCRseq(object, sample_name, path)
+ImportSPTCRseq(object, sample_name, path = NULL, csv = NULL)
 }
 \arguments{
 \item{object}{The data frame with barcodes and the ReArrangment parameters}
@@ -16,9 +16,6 @@ SPATA object
 }
 \description{
 This function import the VDJ data from the SPTCR-Pipline or IgBlast
-}
-\examples{
-
 }
 \author{
 Dieter Henrik Heiland

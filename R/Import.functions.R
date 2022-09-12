@@ -164,22 +164,38 @@ ImportVDJ <- function(object,
 #' @description This function import the VDJ data from the SPTCR-Pipline or IgBlast
 #' @param object The data frame with barcodes and the ReArrangment parameters
 #' @param path The path to the SPTCR-seq pipeline output
-
-
 #' @return SPATA object
 #' @examples 
-#' 
 #' @export
 
 
 ImportSPTCRseq <- function(object,
                            sample_name,
-                           path){
+                           path=NULL,
+                           csv=NULL){
+  
+  
+  if(!is.null(path)){
+    
+    SPATAImmune::verbose.text("Load SPTCR seq Pipeline data")
+    vdj <- read.csv(paste0(path,"/ClusterCorrect/",sample_name,"_CORRECTED_umi_corrected_count_table.csv"))
+    
+  }else{
+    
+    if(!is.null(csv)){
+      
+      SPATAImmune::verbose.text("Load SPTCR seq Pipeline data")
+      vdj <- read.csv(csv)
+      
+    }else{
+      
+      stop ("No data input type is choosen; Please add a csv or path")
+    }
+  }
   
   SPATA2::check_object(object)
   
-  SPATAImmune::verbose.text("Load SPTCR seq Pipeline data")
-  vdj <- read.csv(paste0(path,"/ClusterCorrect/",sample_name,"_CORRECTED_umi_corrected_count_table.csv"))
+  
   vdj <- vdj %>% mutate(barcodes=paste0(vdj$Spatial.Barcode, "-1"))
   
   
